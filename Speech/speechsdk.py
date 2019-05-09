@@ -1,10 +1,20 @@
 import azure.cognitiveservices.speech as speechsdk
+import time
+"""
+import yaml
+import io
+
+try:
+    config = yaml.safe_load(open("config.yaml","r"))
+except yaml.YAMLError as error:
+        print(error)
+"""
 
 # Creates an instance of a speech config with specified subscription key and service region.
 # Replace with your own subscription key and service region (e.g., "westus").
 speech_key, service_region = "f930f892f1284edba0671f94d784807b", "JapanEast"
-speech_config = speechsdk.SpeechConfig(subscription=speech_key, region=service_region)
-# speech_config.set_property("speechRecognitionLanguage","zh-TW")
+speech_config = speechsdk.SpeechConfig(subscription=speech_key, region=service_region, speech_recognition_language = "jp-JP")
+
 
 # Creates a recognizer with the given settings
 speech_recognizer = speechsdk.SpeechRecognizer(speech_config=speech_config)
@@ -18,15 +28,14 @@ print("Say something...")
 # Note: Since recognize_once() returns only a single utterance, it is suitable only for single
 # shot recognition like command or query. 
 # For long-running multi-utterance recognition, use start_continuous_recognition() instead.
-result = speech_recognizer.recognize_once()
+speech_recognizer.session_started.connect(lambda evt: print('SESSION STARTED: {}'.format(evt)))
+speech_recognizer.session_stopped.connect(lambda evt: print('\nSESSION STOPPED {}'.format(evt)))
+speech_recognizer.recognized.connect(lambda evt: print('\n{}'.format(evt.result.text)))
 
-# Checks result.
-if result.reason == speechsdk.ResultReason.RecognizedSpeech:
-    print("Recognized: {}".format(result.text))
-elif result.reason == speechsdk.ResultReason.NoMatch:
-    print("No speech could be recognized: {}".format(result.no_match_details))
-elif result.reason == speechsdk.ResultReason.Canceled:
-    cancellation_details = result.cancellation_details
-    print("Speech Recognition canceled: {}".format(cancellation_details.reason))
-    if cancellation_details.reason == speechsdk.CancellationReason.Error:
-        print("Error details: {}".format(cancellation_details.error_details))
+speech_recognizer.start_continuous_recognition_async()
+time.sleep(20)
+speech_recognizer.stop_continuous_recognition_async()
+
+speech_recognizer.session_started.disconnect_all()
+speech_recognizer.recognized.disconnect_all()
+speech_recognizer.session_stopped.disconnect_all()
